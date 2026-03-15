@@ -21,13 +21,24 @@ app.use(bodyParser.json());
 app.use(express.json());
 
 // ─── MongoDB Connection ────────────────────────────────────────────────────────
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI, {
+            serverSelectionTimeoutMS: 15000, // Timeout after 15s instead of default
+            socketTimeoutMS: 45000,
+        });
         console.log('✅ Connected to MongoDB Atlas.');
         seedMenu();
-    }).catch(err => {
-        console.error('❌ Error connecting to MongoDB:', err.message);
-    });
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        // On Vercel, we want to know if the URI is missing
+        if (!process.env.MONGODB_URI) {
+            console.error('CRITICAL: MONGODB_URI is not defined in environment variables!');
+        }
+    }
+};
+
+connectDB();
 
 // ─── Schemas & Models ──────────────────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
