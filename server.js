@@ -9,7 +9,11 @@ const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',   // set FRONTEND_URL on Vercel after deploying frontend
+    origin: (origin, callback) => {
+        // Allow all origins for now to fix deployment issues, 
+        // or you can specifically check for your frontend URL
+        callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
