@@ -20,15 +20,20 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(express.json());
 
-// ─── MongoDB Connection ────────────────────────────────────────────────────────
+// ─── MongoDB Connection & Cache ────────────────────────────────────────────────────────
+let isConnected = false;
+
 const connectDB = async () => {
+    if (isConnected) return;
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
-            serverSelectionTimeoutMS: 15000, // Timeout after 15s instead of default
+            serverSelectionTimeoutMS: 15000,
             socketTimeoutMS: 45000,
         });
+        isConnected = true;
         console.log('✅ Connected to MongoDB Atlas.');
-        seedMenu();
+        // Seed asynchronously – don't block the server startup or request
+        seedMenu().catch(err => console.error('Seed Error:', err));
     } catch (err) {
         console.error('❌ MongoDB Connection Error:', err.message);
         // On Vercel, we want to know if the URI is missing
@@ -75,9 +80,8 @@ const Order = mongoose.model('Order', orderSchema);
 async function seedMenu() {
     try {
         const count = await Menu.countDocuments();
-        if (count < 20) {
-            await Menu.deleteMany({});
-            await Menu.insertMany([
+        if (count < 5) { // Only seed if truly empty/low
+            const items = [
                 { name: 'Classic Gourmet Burger',    description: 'Juicy beef patty with fresh lettuce, tomato, cheese and signature sauce.',      price: 149, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Artisan Pepperoni Pizza',   description: 'Wood-fired crust, rich tomato sauce, premium pepperoni, and melted mozzarella.', price: 199, image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Golden Crispy Fries',       description: 'Perfectly salted french fries with a side of truffle mayo.',                     price:  79, image: 'https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?auto=format&fit=crop&w=600&q=80' },
@@ -85,24 +89,16 @@ async function seedMenu() {
                 { name: 'Grilled Salmon Bowl',       description: 'Fresh caught salmon over quinoa with roasted vegetables.',                        price: 229, image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Vegan Buddha Bowl',         description: 'Roasted sweet potato, chickpeas, kale, and tahini dressing.',                    price: 179, image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Truffle Mac & Cheese',      description: 'Creamy artisan cheeses baked with a crispy truffle crumb topping.',              price: 159, image: 'https://images.unsplash.com/photo-1543352634-99a5d50ae78e?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Wagyu Steak Tartare',       description: 'Premium wagyu beef served raw with quail egg and crostini.',                     price: 249, image: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Crispy Calamari',           description: 'Lightly dusted and fried calamari with lemon aioli.',                           price: 139, image: 'https://images.unsplash.com/photo-1519984388953-d2406bc725e1?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Hakka Noodles',             description: 'Wok-tossed noodles with crunchy vegetables and soy dressing.',                   price: 119, image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Sushi Boat Assortment',     description: "Chef's selection of premium nigiri, sashimi, and maki rolls.",                  price: 249, image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=600&q=80' },
                 { name: 'Mexican Street Tacos',      description: 'Three authentic al pastor tacos with cilantro and lime.',                        price: 129, image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Lobster Bisque',            description: 'Rich, creamy soup loaded with fresh Maine lobster chunks.',                      price: 219, image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Chocolate Lava Cake',       description: 'Warm dark chocolate cake with a molten center and vanilla bean ice cream.',      price:  99, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Matcha Tiramisu',           description: 'A Japanese twist on the classic Italian dessert layers.',                        price:  89, image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Fresh Margherita Flatbread',description: 'Hand-pulled mozzarella, basil, and San Marzano tomatoes.',                      price: 159, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Garlic Butter Prawns',      description: 'Jumbo prawns pan-seared in rich garlic and herb butter.',                       price: 209, image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80' },
-                { name: 'BBQ Ribs Platter',          description: 'Slow-smoked baby back ribs brushed with our house BBQ sauce.',                  price: 239, image: 'https://images.unsplash.com/photo-1544025162-8e31ee135eec?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Avocado Toast Deluxe',      description: 'Sourdough topped with smashed avocado, poached egg, and chili flakes.',        price: 109, image: 'https://images.unsplash.com/photo-1588137378633-dea1336ce1e2?auto=format&fit=crop&w=600&q=80' },
-                { name: 'Artisanal Cheese Board',    description: 'A curated selection of cheeses, honey, nuts, and crackers.',                    price: 189, image: 'https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=600&q=80' }
-            ]);
-            console.log('✅ Menu seeded into MongoDB.');
+                { name: 'Chocolate Lava Cake',       description: 'Warm dark chocolate cake with a molten center and vanilla bean ice cream.',      price:  99, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80' }
+            ];
+            await Menu.deleteMany({});
+            await Menu.insertMany(items);
+            console.log('✅ Menu seeded.');
         }
     } catch (err) {
-        console.error('❌ Error seeding menu:', err);
+        console.error('❌ Seed failed:', err.message);
     }
 }
 
